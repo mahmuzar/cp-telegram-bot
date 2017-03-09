@@ -1,0 +1,87 @@
+<?php
+
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+namespace clientogram\mapper;
+
+abstract class Collection implements \Iterator {
+
+    protected $mapper;
+    protected $total = 0;
+    protected $raw = array();
+    private $result;
+    private $pointer = 0;
+    private $objects = array();
+
+    /**
+     * 
+     * @param array $raw
+     * @param \clientogram\mapper\Mapper $mapper
+     */
+    function __construct(array $raw = NULL, Mapper $mapper = NULL) {
+        if (!is_null($raw) && !is_null($mapper)) {
+            $this->raw = $raw;
+            $this->total = count($raw);
+        }
+        $this->mapper = $mapper;
+    }
+
+    function add(\clientogram\domain\DomainObject $object) {
+        $class = $this->targetClass();
+        if (!($object instanceof $class)) {
+            throw new Exception("Это коллекция {$class}");
+        }
+        $this->notifyAccess();
+        $this->objects[$this->total] = $object;
+        $this->total++;
+    }
+
+    abstract function targetClass();
+
+    protected function notifyAccess() {
+        
+    }
+
+    private function getRow($num) {
+        $this->notifyAccess();
+        if ($num >= $this->total || $num < 0) {
+            return NULL;
+        }
+        if (isset($this->objects[$num])) {
+            return $this->objects[$num];
+        }
+        if (isset($this->raw[$num])) {
+            $this->objects[$num] = $this->mapper->createObject($this->raw[$num]);
+            return $this->objects[$num];
+        }
+    }
+
+    public function rewind() {
+        $this->pointer = 0;
+    }
+
+    public function current() {
+        return $this->getRow($this->pointer);
+    }
+
+    public function key() {
+        return $this->pointer;
+    }
+
+    public function next() {
+        $row = $this->getRow($this->pointer);
+        if ($row) {
+            $this->pointer++;
+        }
+        return $row;
+    }
+
+    public function valid() {
+        return (!is_null($this->current()));
+    }
+
+}
